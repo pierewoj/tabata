@@ -17,26 +17,23 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             transition: background-color 0.5s ease;
             color: white;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            padding: 20px;
-            position: relative;
+            padding: 0;
+            margin: 0;
         }
 
         .app-header {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
+            width: 100%;
             text-align: center;
-            padding: 20px;
+            padding: 20px 20px 10px 20px;
             transition: opacity 0.3s ease;
+            flex-shrink: 0;
         }
 
         .app-title {
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: bold;
             color: white;
             text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
@@ -44,13 +41,11 @@
         }
 
         .app-footer {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            width: 100%;
             text-align: center;
-            padding: 20px;
+            padding: 10px 20px 20px 20px;
             transition: opacity 0.3s ease;
+            flex-shrink: 0;
         }
 
         .app-footer p {
@@ -99,11 +94,13 @@
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            min-width: 400px;
-            max-width: 800px;
             width: 100%;
+            max-width: 800px;
+            margin: 0 20px;
             display: flex;
             flex-direction: column;
+            flex: 1;
+            justify-content: center;
         }
 
         .timer-display {
@@ -253,9 +250,9 @@
         .config-container {
             display: none;
             text-align: left;
-            max-height: 70vh;
-            overflow-y: auto;
             color: white;
+            overflow-y: auto;
+            max-height: none;
         }
 
         .config-container.active {
@@ -297,25 +294,27 @@
         .exercise-item {
             display: flex;
             align-items: center;
+            flex-wrap: wrap;
             background: rgba(255, 255, 255, 0.2);
             margin: 10px 0;
             padding: 15px;
             border-radius: 10px;
             border: 2px solid rgba(255, 255, 255, 0.3);
             color: white;
+            gap: 10px;
         }
 
         .exercise-number {
             font-weight: bold;
-            margin-right: 15px;
-            min-width: 40px;
+            min-width: 30px;
             color: white;
+            flex-shrink: 0;
         }
 
         .exercise-input {
             flex: 1;
+            min-width: 150px;
             padding: 10px;
-            margin-right: 15px;
             color: black;
             border: none;
             border-radius: 5px;
@@ -324,11 +323,18 @@
         .duration-input {
             width: 60px;
             padding: 8px;
-            margin-right: 5px;
             color: black;
             text-align: center;
             border: none;
             border-radius: 5px;
+            flex-shrink: 0;
+        }
+
+        .exercise-controls {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-wrap: wrap;
         }
 
         .move-btn {
@@ -336,7 +342,6 @@
             height: 35px;
             border-radius: 5px;
             font-size: 14px;
-            margin-right: 5px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -345,6 +350,7 @@
             color: white;
             cursor: pointer;
             border: 1px solid rgba(255, 255, 255, 0.5);
+            flex-shrink: 0;
         }
 
         .remove-btn {
@@ -360,6 +366,7 @@
             align-items: center;
             justify-content: center;
             line-height: 1;
+            flex-shrink: 0;
         }
 
         .remove-btn:hover {
@@ -404,16 +411,16 @@
 
         @media (max-width: 500px) {
             .container {
-                min-width: 300px;
+                margin: 0 10px;
                 padding: 15px;
             }
             
             .timer-display {
-                font-size: 5rem;
+                font-size: 4rem;
             }
             
             .exercise-name {
-                font-size: 1.8rem;
+                font-size: 1.5rem;
             }
 
             .config-actions {
@@ -425,11 +432,31 @@
             }
 
             .app-title {
-                font-size: 2rem;
+                font-size: 1.8rem;
             }
 
             .app-footer p {
                 font-size: 0.8rem;
+            }
+
+            .exercise-item {
+                padding: 10px;
+                gap: 8px;
+            }
+
+            .exercise-input {
+                min-width: 120px;
+            }
+
+            .exercise-controls {
+                width: 100%;
+                justify-content: center;
+                margin-top: 5px;
+            }
+
+            button {
+                padding: 12px 20px;
+                font-size: 1rem;
             }
         }
     </style>
@@ -848,10 +875,12 @@
                            maxlength="100" onchange="updateExerciseName(${index}, this.value)">
                     <input type="number" class="duration-input" value="${exercise.duration}" 
                            min="5" max="600" onchange="updateExerciseDuration(${index}, this.value)">
-                    <span style="color: white; margin-right: 15px;">s</span>
-                    <button class="move-btn" onclick="moveExerciseUp(${index})" ${isFirst ? 'disabled' : ''}>⬆️</button>
-                    <button class="move-btn" onclick="moveExerciseDown(${index})" ${isLast ? 'disabled' : ''}>⬇️</button>
-                    <button class="remove-btn" onclick="removeExercise(${index})">🗑️</button>
+                    <span style="color: white;">s</span>
+                    <div class="exercise-controls">
+                        <button class="move-btn" onclick="moveExerciseUp(${index})" ${isFirst ? 'disabled' : ''}>⬆️</button>
+                        <button class="move-btn" onclick="moveExerciseDown(${index})" ${isLast ? 'disabled' : ''}>⬇️</button>
+                        <button class="remove-btn" onclick="removeExercise(${index})">🗑️</button>
+                    </div>
                 `;
 
                 list.appendChild(item);
@@ -897,11 +926,25 @@
             }
             stopWorkout();
             updateDisplay();
+            updateUrl();
             hideConfig();
         }
 
         function cancelConfig() {
             hideConfig();
+        }
+
+        // URL management functions
+        function updateUrl() {
+            if (exercises.length > 0) {
+                const encoded = encodeConfig(exercises);
+                if (encoded) {
+                    window.history.replaceState(null, '', `#${encoded}`);
+                }
+            } else {
+                // Clear the hash if no exercises
+                window.history.replaceState(null, '', window.location.pathname);
+            }
         }
 
         // URL sharing functions
@@ -998,6 +1041,16 @@
             timeRemaining = exercises.length > 0 ? exercises[0].duration : 0;
             updateDisplay();
             updateBackground();
+            
+            // Set up browser back/forward button handling
+            window.addEventListener('popstate', function(event) {
+                if (!loadConfigFromUrl()) {
+                    exercises = [];
+                }
+                stopWorkout();
+                updateDisplay();
+                updateBackground();
+            });
         }
 
         // Start the app
