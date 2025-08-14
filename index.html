@@ -33,8 +33,9 @@
         }
         
         .timer { font-size: 4rem; margin: 20px 0; }
-        .exercise { font-size: 2rem; margin: 15px 0; }
+        .exercise { font-size: 3.5rem; margin: 15px 0; font-weight: bold; line-height: 1.2; }
         .info { font-size: 1.2rem; margin: 10px 0; opacity: 0.9; }
+        .next-exercise { font-size: 2.5rem; margin: 10px 0; font-weight: bold; color: #FFD700; }
         
         .button-row {
             display: flex;
@@ -117,10 +118,16 @@
         
         @media (max-width: 600px) {
             .timer { font-size: 2.5rem; }
-            .exercise { font-size: 1.5rem; }
+            .exercise { font-size: 2.2rem; }
+            .next-exercise { font-size: 1.8rem; }
             .container { padding: 20px; margin: 0 10px; }
             .exercise-item { flex-direction: column; align-items: stretch; }
             .exercise-input { min-width: auto; }
+        }
+        
+        @media (max-width: 400px) {
+            .exercise { font-size: 1.8rem; }
+            .next-exercise { font-size: 1.4rem; }
         }
     </style>
 </head>
@@ -193,6 +200,17 @@
             return `${m}:${s.toString().padStart(2, '0')}`;
         }
 
+        function calculateTotalWorkoutTime() {
+            if (exercises.length === 0) return 0;
+            
+            let total = 0;
+            exercises.forEach((exercise, i) => {
+                total += exercise.duration;
+                if (i < exercises.length - 1) total += restTime; // Rest after each exercise except last
+            });
+            return total;
+        }
+
         function calculateRemainingTime() {
             let total = 0;
             
@@ -253,7 +271,9 @@
                 timerEl.textContent = '0:00';
                 exerciseEl.textContent = 'No exercises';
                 phaseEl.textContent = 'Press CONFIG button to define exercises';
+                phaseEl.className = 'info';
                 progressEl.textContent = '';
+                progressEl.className = 'info';
                 remainingEl.textContent = '';
                 updateButtons();
                 return;
@@ -263,29 +283,40 @@
             
             if (isResting) {
                 phaseEl.textContent = 'REST';
+                phaseEl.className = 'next-exercise';
                 exerciseEl.textContent = 'Get ready...';
                 progressEl.textContent = `Next: ${exercises[currentIndex]?.name || ''}`;
+                progressEl.className = 'next-exercise';
             } else {
                 if (isRunning) {
                     // Show next exercise name, or "FINAL EXERCISE" if it's the last one
                     if (currentIndex < exercises.length - 1) {
-                        phaseEl.textContent = `Next: ${exercises[currentIndex + 1].name}`;
+                        phaseEl.textContent = 'Next:';
+                        phaseEl.className = 'next-exercise';
+                        progressEl.textContent = exercises[currentIndex + 1].name;
+                        progressEl.className = 'next-exercise';
                     } else {
                         phaseEl.textContent = 'FINAL EXERCISE';
+                        phaseEl.className = 'next-exercise';
+                        progressEl.textContent = `Exercise ${currentIndex + 1}/${exercises.length}`;
+                        progressEl.className = 'info';
                     }
                 } else {
                     phaseEl.textContent = 'READY';
+                    phaseEl.className = 'info';
+                    progressEl.textContent = `Exercise ${currentIndex + 1}/${exercises.length}`;
+                    progressEl.className = 'info';
                 }
                 exerciseEl.textContent = exercises[currentIndex]?.name || '';
-                progressEl.textContent = `Exercise ${currentIndex + 1}/${exercises.length}`;
             }
 
-            // Show remaining time
+            // Show remaining time or total workout time
             if (isRunning || isPaused) {
                 const remaining = calculateRemainingTime();
                 remainingEl.textContent = `Remaining: ${formatTime(remaining)}`;
             } else {
-                remainingEl.textContent = '';
+                const total = calculateTotalWorkoutTime();
+                remainingEl.textContent = total > 0 ? `Total workout time: ${formatTime(total)}` : '';
             }
 
             updateButtons();
