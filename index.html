@@ -117,6 +117,22 @@
             padding: 8px 12px; 
             font-size: 0.9rem;
         }
+
+        .audio-permission {
+            background: rgba(255, 200, 0, 0.15);
+            border: 2px solid rgba(255, 200, 0, 0.5);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .audio-permission button {
+            background: #FF9800;
+            border-color: #FF9800;
+            margin: 5px;
+        }
         
         @media (max-width: 600px) {
             .timer { font-size: 2.5rem; }
@@ -136,6 +152,11 @@
 <body>
     <div class="container">
         <h1>Tabata Timer</h1>
+        
+        <div class="audio-permission" id="audio-permission">
+            <p>📢 For the best experience with countdown sounds, please enable audio by tapping the button below. This allows sounds to work even when your phone is in silent mode.</p>
+            <button onclick="enableAudio()">Enable Audio</button>
+        </div>
         
         <div id="timer-view">
             <div class="timer" id="timer">0:00</div>
@@ -191,6 +212,47 @@
         let timer = null;
         let audioContext = null;
         let wakeLock = null;
+        let audioEnabled = false;
+
+        // Show audio permission notice on first load or if audio context is not working
+        if (!localStorage.getItem('audioEnabled')) {
+            document.getElementById('audio-permission').style.display = 'block';
+        } else {
+            audioEnabled = true;
+            // Initialize audio context for returning users
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (err) {
+                console.warn('Audio context creation failed:', err);
+                // Show audio permission notice if audio context fails
+                document.getElementById('audio-permission').style.display = 'block';
+                audioEnabled = false;
+            }
+        }
+
+        async function enableAudio() {
+            try {
+                // Create audio context with user gesture
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Play a silent sound to "unlock" audio on mobile
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.connect(gain).connect(audioContext.destination);
+                gain.gain.setValueAtTime(0, audioContext.currentTime);
+                osc.start();
+                osc.stop(audioContext.currentTime + 0.1);
+                
+                audioEnabled = true;
+                localStorage.setItem('audioEnabled', 'true');
+                document.getElementById('audio-permission').style.display = 'none';
+                
+                // Test beep
+                beep(800, 0.1);
+            } catch (err) {
+                console.warn('Audio initialization failed:', err);
+            }
+        }
 
         function formatTime(seconds) {
             const m = Math.floor(seconds / 60);
@@ -204,7 +266,7 @@
             let total = 0;
             exercises.forEach((exercise, i) => {
                 total += exercise.duration;
-                if (i < exercises.length - 1) total += restTime; // Rest after each exercise except last
+                if (i < exercises.length - 1) total += restTime;
             });
             return total;
         }
@@ -212,16 +274,13 @@
         function calculateRemainingTime() {
             let total = 0;
             
-            // Add remaining time for current exercise/rest
             total += timeLeft;
             
-            // Add time for remaining exercises
             for (let i = currentIndex + (isResting ? 0 : 1); i < exercises.length; i++) {
                 total += exercises[i].duration;
-                if (i < exercises.length - 1) total += restTime; // Rest after each exercise except last
+                if (i < exercises.length - 1) total += restTime;
             }
             
-            // If currently in exercise (not rest), add remaining rest periods
             if (!isResting && currentIndex < exercises.length - 1) {
                 total += restTime;
             }
@@ -246,16 +305,54 @@
             }
         }
 
-        function beep(freq = 800) {
-            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            osc.connect(gain).connect(audioContext.destination);
-            osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-            osc.start();
-            osc.stop(audioContext.currentTime + 0.2);
+        function beep(freq = 800, duration = 0.2, volume = 0.3) {
+            if (!audioEnabled) return;
+            
+            // Create audio context if it doesn't exist
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (err) {
+                    console.warn('Audio context creation failed:', err);
+                    return;
+                }
+            }
+            
+            try {
+                // Resume audio context if suspended (important for mobile)
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.connect(gain).connect(audioContext.destination);
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(volume, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                osc.start();
+                osc.stop(audioContext.currentTime + duration);
+            } catch (err) {
+                console.warn('Beep failed:', err);
+                // If audio fails, show the permission notice again
+                document.getElementById('audio-permission').style.display = 'block';
+                audioEnabled = false;
+            }
+        }
+
+        function playCountdownBeeps() {
+            // Play 3 beeps with 1 second intervals: beep - 1s - beep - 1s - beep(higher/louder)
+            beep(600, 0.2, 0.3);  // First beep
+            setTimeout(() => beep(600, 0.2, 0.3), 1000);  // Second beep after 1 second
+            setTimeout(() => beep(800, 0.2, 0.5), 2000);  // Third beep (higher/louder) after 2 seconds
+        }
+
+        function playWorkoutCompleteSound() {
+            // Play a celebration sound sequence
+            beep(800, 0.3, 0.5);
+            setTimeout(() => beep(1000, 0.3, 0.5), 150);
+            setTimeout(() => beep(1200, 0.3, 0.5), 300);
+            setTimeout(() => beep(1000, 0.5, 0.5), 500);
         }
 
         function updateDisplay() {
@@ -287,7 +384,6 @@
                 progressEl.className = 'next-exercise';
             } else {
                 if (isRunning) {
-                    // Show next exercise name, or "FINAL EXERCISE" if it's the last one
                     if (currentIndex < exercises.length - 1) {
                         phaseEl.textContent = 'Next:';
                         phaseEl.className = 'next-exercise';
@@ -308,7 +404,6 @@
                 exerciseEl.textContent = exercises[currentIndex]?.name || '';
             }
 
-            // Show remaining time or total workout time
             if (isRunning || isPaused) {
                 const remaining = calculateRemainingTime();
                 remainingEl.textContent = `Remaining: ${formatTime(remaining)}`;
@@ -330,7 +425,6 @@
             const prevBtn = document.getElementById('prev-btn');
             const nextBtn = document.getElementById('next-btn');
 
-            // Hide all buttons first
             startBtn.style.display = 'none';
             resumeBtn.style.display = 'none';
             pauseBtn.style.display = 'none';
@@ -341,23 +435,19 @@
             nextBtn.style.display = 'none';
 
             if (exercises.length === 0) {
-                // No exercises: show config and copy link
                 configBtn.style.display = 'inline-block';
                 copyBtn.style.display = 'inline-block';
             } else if (isRunning && !isPaused) {
-                // Running: show pause, stop, prev, next
                 pauseBtn.style.display = 'inline-block';
                 stopBtn.style.display = 'inline-block';
                 prevBtn.style.display = 'inline-block';
                 nextBtn.style.display = 'inline-block';
             } else if (isPaused) {
-                // Paused: show resume, stop, prev, next
                 resumeBtn.style.display = 'inline-block';
                 stopBtn.style.display = 'inline-block';
                 prevBtn.style.display = 'inline-block';
                 nextBtn.style.display = 'inline-block';
             } else {
-                // Stopped: show start, config, copy link
                 startBtn.style.display = 'inline-block';
                 configBtn.style.display = 'inline-block';
                 copyBtn.style.display = 'inline-block';
@@ -373,10 +463,14 @@
                 timeLeft = isResting ? restTime : exercises[currentIndex]?.duration || 60;
             }
             
-            // Prevent screen from dimming on mobile
             requestWakeLock();
             
             timer = setInterval(() => {
+                // Play countdown beeps at 3 seconds remaining (only during exercise, not rest)
+                if (!isResting && timeLeft === 3) {
+                    playCountdownBeeps();
+                }
+                
                 timeLeft--;
                 updateDisplay();
                 
@@ -389,7 +483,8 @@
                     } else {
                         currentIndex++;
                         if (currentIndex >= exercises.length) {
-                            alert('Workout complete!');
+                            playWorkoutCompleteSound();
+                            alert('Workout complete! 🎉');
                             stop();
                             return;
                         }
@@ -419,7 +514,6 @@
             timeLeft = exercises[0]?.duration || 0;
             if (timer) clearInterval(timer);
             
-            // Allow screen to dim again
             releaseWakeLock();
             
             updateDisplay();
@@ -526,7 +620,6 @@
         }
 
         function updateUrl() {
-            // Skip URL updates in sandboxed environments
             try {
                 if (exercises.length > 0 && window.location.protocol !== 'about:') {
                     const config = { exercises, restTime };
